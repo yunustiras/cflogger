@@ -58,7 +58,7 @@ func handler(svc *cloudformation.CloudFormation, data string, StartTime time.Tim
 		if !cont {
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	return ""
 
