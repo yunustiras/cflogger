@@ -49,7 +49,6 @@ func Start() {
 
 }
 
-//
 func handler(svc *cloudformation.CloudFormation, data string, StartTime time.Time) string {
 	for {
 		e, err := getEvents(svc, data, StartTime)
@@ -64,36 +63,40 @@ func handler(svc *cloudformation.CloudFormation, data string, StartTime time.Tim
 
 }
 
-//Get StackEvents.
+// Get StackEvents.
 func getEvents(cf *cloudformation.CloudFormation, StackId string, StartTime time.Time) ([]*cloudformation.StackEvent, error) {
 
 	var err error
 	var events []*cloudformation.StackEvent
-	nextToken := ""
+	var nextToken *string
 	for {
 		params := &cloudformation.DescribeStackEventsInput{
 			StackName: aws.String(StackId),
-		}
-		if len(nextToken) > 0 {
-			params.NextToken = aws.String(nextToken)
+			NextToken: nextToken,
 		}
 		resp, err := cf.DescribeStackEvents(params)
-		errorHandle(err)
+		if err != nil {
+			// Implement exponential backoff on throttling error
+			if isThrottlingError(err) {
+				time.Sleep(getBackoffDuration())
+				continue
+			}
+			return nil, err
+		}
 		// Get Last Triggered Events
 		for _, e := range resp.StackEvents {
-
 			if e.Timestamp.After(StartTime) {
 				events = append(events, e)
 			}
 		}
-		if nil == resp.NextToken {
+		if resp.NextToken == nil {
 			break
 		} else {
-			nextToken = *resp.NextToken
+			nextToken = resp.NextToken
 		}
 	}
 	if len(events) == 0 {
-		err = errors.New("Error! There is no events in specified stack.")
+		err = errors.New("Error! There are no events in the specified stack.")
 	}
 	return events, err
 }
@@ -124,4 +127,24 @@ func getStatus(input []*cloudformation.StackEvent) bool {
 		Index = len(input)
 	}
 	return cont
+}
+
+func isThrottlingError(err error) bool {
+	return err != nil && (err.Error() == "Throttling" || err.Error() == "Rate exceeded")
+}
+
+func getBackoffDuration() time.Duration {
+
+	backoffDuration := time.Second * 2
+	maxBackoff := time.Minute * 2
+
+	// emre ocakin icadi ocakemrecan@gmail.com
+	for range [5]byte{} {
+		backoffDuration = backoffDuration * 2
+		if backoffDuration > maxBackoff {
+			backoffDuration = maxBackoff
+			break
+		}
+	}
+	return backoffDuration
 }
