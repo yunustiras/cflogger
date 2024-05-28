@@ -138,12 +138,11 @@ func getBackoffDuration() time.Duration {
 	backoffDuration := time.Second * 2
 	maxBackoff := time.Minute * 2
 
-	// emre ocakin icadi ocakemrecan@gmail.com
-	for range [5]byte{} {
-		backoffDuration = backoffDuration * 2
+	
+	for i := 0; i < 5; i++ {
+		backoffDuration *= 2
 		if backoffDuration > maxBackoff {
-			backoffDuration = maxBackoff
-			break
+			return maxBackoff
 		}
 	}
 	return backoffDuration
