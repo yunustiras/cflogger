@@ -103,15 +103,13 @@ func getEvents(cf *cloudformation.CloudFormation, StackId string, StartTime time
 
 // Lookup State until Stackupdate/StackCreate/Stackdelete completed.
 func getStatus(input []*cloudformation.StackEvent) bool {
-
 	cont := true
-	if len(input) != Index {
 
-		for j, e := range input {
-			if Index == 0 || ((len(input)-Index)+j) >= len(input) {
-				writer := customWriter(aws.StringValue(e.ResourceStatus))
-				writer.Println(aws.Time(*e.Timestamp), aws.StringValue(e.LogicalResourceId), aws.StringValue(e.ResourceStatus), aws.StringValue(e.ResourceStatusReason))
-			}
+	if len(input) > Index {
+		for j, e := range input[Index:] {
+			writer := customWriter(aws.StringValue(e.ResourceStatus))
+			writer.Println(aws.Time(*e.Timestamp), aws.StringValue(e.LogicalResourceId), aws.StringValue(e.ResourceStatus), aws.StringValue(e.ResourceStatusReason))
+
 			if aws.StringValue(e.ResourceType) == "AWS::CloudFormation::Stack" {
 				for _, s := range FinalStatusArray {
 					if aws.StringValue(e.ResourceStatus) == s {
@@ -126,6 +124,7 @@ func getStatus(input []*cloudformation.StackEvent) bool {
 		}
 		Index = len(input)
 	}
+
 	return cont
 }
 
